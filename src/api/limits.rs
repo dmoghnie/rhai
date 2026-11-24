@@ -88,6 +88,9 @@ pub struct Limits {
     /// Not available under `no_object`.
     #[cfg(not(feature = "no_object"))]
     pub map_size: Option<NonZeroUsize>,
+    /// Maximum depth of [arrays][crate::Array] and [object maps][crate::Map] nested in one
+    /// another.
+    pub data_depth: Option<NonZeroUsize>,
 }
 
 impl Limits {
@@ -113,6 +116,7 @@ impl Limits {
             array_size: None,
             #[cfg(not(feature = "no_object"))]
             map_size: None,
+            data_depth: None,
         }
     }
 }
@@ -145,6 +149,7 @@ impl Engine {
                 #[cfg(feature = "no_object")]
                 false
             }
+            || self.limits.data_depth.is_some()
     }
     /// Set the maximum levels of function calls allowed for a script in order to avoid
     /// infinite recursion and stack overflows.
@@ -342,5 +347,32 @@ impl Engine {
         };
         #[cfg(feature = "no_object")]
         return 0;
+    }
+    /// Set the maximum depth of [arrays][crate::Array] and [object maps][crate::Map] nested in
+    /// one another (0 for unlimited): an array holding an array is two deep.
+    ///
+    /// A value made deeper as the script runs is an error, as one too large is (a literal
+    /// written out whole is made as it's parsed, and the expression depth bounds it). Rhai's
+    /// own work on a value (measuring, cloning, dropping or printing it) takes a step of the
+    /// native stack for each level, so without this a script can nest values until the stack
+    /// overflows, which no error can catch.
+    ///
+    /// Not available under `unchecked`.
+    #[inline(always)]
+    pub fn set_max_data_depth(&mut self, max_depth: usize) -> &mut Self {
+        self.limits.data_depth = NonZeroUsize::new(max_depth);
+        self
+    }
+    /// The maximum depth of [arrays][crate::Array] and [object maps][crate::Map] nested in one
+    /// another (0 for unlimited).
+    ///
+    /// Not available under `unchecked`.
+    #[inline]
+    #[must_use]
+    pub const fn max_data_depth(&self) -> usize {
+        match self.limits.data_depth {
+            Some(n) => n.get(),
+            None => 0,
+        }
     }
 }

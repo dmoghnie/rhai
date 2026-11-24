@@ -3469,6 +3469,7 @@ impl<'e> Vm<'e> {
             if self.engine.max_string_size() == 0
                 && self.engine.max_array_size() == 0
                 && self.engine.max_map_size() == 0
+                && self.engine.max_data_depth() == 0
             {
                 return Ok(());
             }
@@ -3477,6 +3478,10 @@ impl<'e> Vm<'e> {
                 .stack
                 .last()
                 .ok_or_else(|| malformed("size check with no element".to_string()))?;
+
+            self.engine
+                .throw_on_depth(value, 1)
+                .map_err(|err| err.fill_position(pos))?;
 
             let delta = calc_data_sizes(value, true);
 

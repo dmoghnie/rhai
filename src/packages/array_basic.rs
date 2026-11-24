@@ -264,6 +264,10 @@ pub mod array_functions {
 
         let _ctx = ctx;
 
+        // Check if the item nests too deep in the array
+        #[cfg(not(feature = "unchecked"))]
+        _ctx.engine().throw_on_depth(&item, 1)?;
+
         // Check if array will be over max size limit
         #[cfg(not(feature = "unchecked"))]
         if _ctx.engine().max_array_size() > 0 {

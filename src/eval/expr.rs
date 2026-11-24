@@ -291,6 +291,9 @@ impl Engine {
 
                     #[cfg(not(feature = "unchecked"))]
                     if self.has_data_size_limit() {
+                        self.throw_on_depth(&value, 1)
+                            .map_err(|err| err.fill_position(item_expr.position()))?;
+
                         let val_sizes = crate::eval::calc_data_sizes(&value, true);
 
                         total_data_sizes = (
@@ -322,6 +325,9 @@ impl Engine {
 
                     #[cfg(not(feature = "unchecked"))]
                     if self.has_data_size_limit() {
+                        self.throw_on_depth(&value, 1)
+                            .map_err(|err| err.fill_position(value_expr.position()))?;
+
                         let delta = crate::eval::calc_data_sizes(&value, true);
                         total_data_sizes = (
                             total_data_sizes.0 + delta.0,

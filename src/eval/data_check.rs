@@ -92,6 +92,34 @@ pub fn calc_map_sizes(map: &crate::Map) -> (usize, usize, usize) {
     (ax, mx, sx)
 }
 
+/// Whether [arrays][crate::Array] and [object maps][crate::Map] nest in `value` more than `max`
+/// deep (an array holding an array is two deep). It looks no deeper than `max + 1`, however
+/// deep they go.
+#[must_use]
+pub fn exceeds_data_depth(value: &Dynamic, max: usize) -> bool {
+    fn deeper(value: &Dynamic, left: usize) -> bool {
+        #[cfg(all(feature = "no_index", feature = "no_object"))]
+        let _ = left;
+
+        match value.0 {
+            #[cfg(not(feature = "no_index"))]
+            Union::Array(ref a, ..) => left == 0 || a.iter().any(|v| deeper(v, left - 1)),
+            #[cfg(not(feature = "no_object"))]
+            Union::Map(ref m, ..) => left == 0 || m.values().any(|v| deeper(v, left - 1)),
+            _ => false,
+        }
+    }
+
+    #[cfg(not(feature = "no_closure"))]
+    if value.is_shared() {
+        return value
+            .read_lock::<Dynamic>()
+            .map_or(false, |v| deeper(&v, max));
+    }
+
+    deeper(value, max)
+}
+
 /// Recursively calculate the sizes of a value.
 ///
 /// Sizes returned are `(` [`Array`][crate::Array], [`Map`][crate::Map] and [`String`] `)`.
@@ -149,6 +177,23 @@ impl Engine {
         Ok(())
     }
 
+    /// Raise an error if [arrays][crate::Array] and [object maps][crate::Map] nest in `value`
+    /// deeper than the limit (if any) allows, it being put `below` levels down (1: an item of
+    /// a new array or map).
+    ///
+    /// [`Position`] in [`EvalAltResult`][crate::EvalAltResult] is always [`NONE`][Position::NONE]
+    /// and should be set afterwards.
+    #[cfg(not(feature = "unchecked"))]
+    pub(crate) fn throw_on_depth(&self, value: &Dynamic, below: usize) -> RhaiResultOf<()> {
+        match self.limits.data_depth {
+            Some(max) if exceeds_data_depth(value, max.get().saturating_sub(below)) => Err(
+                ERR::ErrorDataTooLarge("Depth of nested arrays/maps".to_string(), Position::NONE)
+                    .into(),
+            ),
+            _ => Ok(()),
+        }
+    }
+
     /// Check whether the size of a [`Dynamic`] is within limits.
     #[cfg(not(feature = "unchecked"))]
     #[inline]
@@ -161,6 +206,10 @@ impl Engine {
         if !self.has_data_size_limit() {
             return Ok(value);
         }
+
+        // First, as measuring walks every level.
+        self.throw_on_depth(value.borrow(), 0)
+            .map_err(|err| err.fill_position(pos))?;
 
         let sizes = calc_data_sizes(value.borrow(), true);
 
