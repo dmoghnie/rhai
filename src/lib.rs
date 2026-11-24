@@ -525,6 +525,9 @@ type SerdeString = SmartString;
 
 // Compiler guards against mutually-exclusive feature flags
 
+#[cfg(not(any(feature = "smartstring", feature = "compact_str")))]
+compile_error!("one of `smartstring` (default) or `compact_str` is needed for strings");
+
 #[cfg(feature = "no_float")]
 #[cfg(feature = "f32_float")]
 compile_error!("`f32_float` cannot be used with `no_float`");

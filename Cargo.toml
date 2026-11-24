@@ -24,7 +24,7 @@ ahash = { version = "0.8.4", default-features = false, features = ["compile-time
 num-traits = { version = "0.2.14", default-features = false }
 once_cell = { version = "1.20.1", default-features = false, features = ["race", "portable-atomic", "alloc"] }
 bitflags = { version = "2.3.3", default-features = false }
-smartstring = { version = "1.0.0", default-features = false }
+smartstring = { version = "1.0.0", default-features = false, optional = true }
 rhai_codegen = { version = "3.3.0", path = "codegen" }
 
 no-std-compat = { git = "https://gitlab.com/jD91mZM2/no-std-compat.git", version = "0.4.1", default-features = false, features = ["alloc"], optional = true }
@@ -48,9 +48,9 @@ serde_json = { version = "1.0.45", default-features = false, features = ["alloc"
 [features]
 
 ## Default features: `std`, uses runtime random numbers for hashing.
-default = ["std", "ahash/runtime-rng"] # ahash/runtime-rng trumps ahash/compile-time-rng
+default = ["std", "ahash/runtime-rng", "smartstring"] # ahash/runtime-rng trumps ahash/compile-time-rng
 ## Standard features: uses compile-time random number for hashing.
-std = ["once_cell/std", "ahash/std", "num-traits/std", "smartstring/std", "compact_str?/std"]
+std = ["once_cell/std", "ahash/std", "num-traits/std", "smartstring?/std", "compact_str?/std"]
 
 #! ### Enable Special Functionalities
 
@@ -76,6 +76,8 @@ fuzz = ["arbitrary", "rust_decimal?/rust-fuzz", "serde", "grain"]
 grain = []
 ## Use [`compact_str`](https://crates.io/crates/compact_str) instead of the unmaintained [`smartstring`](https://crates.io/crates/smartstring) for identifiers and object map keys (changes the key type of `Map`).
 compact_str = ["dep:compact_str"]
+## Use [`smartstring`](https://crates.io/crates/smartstring) for identifiers and object map keys (default). Without `default-features`, turn on this or `compact_str`; with `compact_str` on, `smartstring` isn't needed, and leaving it off keeps it out of the build.
+smartstring = ["dep:smartstring"]
 
 #! ### System Configuration Features
 
